@@ -2,7 +2,7 @@
    Everything the app needs is in these few files, so we cache them on install
    and serve from the cache first. */
 
-const CACHE = 'html-studio-v2'
+const CACHE = 'html-studio-v3'
 const FILES = [
   './',
   './index.html',

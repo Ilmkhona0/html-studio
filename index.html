@@ -104,6 +104,16 @@
     font-family:Consolas,monospace;font-size:15px;color:var(--ink);
   }
   #symbols div:active{background:var(--accent2);color:#0e1016}
+  #symbols div.act{
+    background:rgba(107,227,181,.14);border-color:rgba(107,227,181,.4);
+    color:var(--accent);font-family:inherit;font-size:12.5px;font-weight:700;
+    padding:0 10px;min-width:auto;
+  }
+  #symbols div.act:active{background:var(--accent);color:#0e1016}
+  #symbols .sep{
+    flex:0 0 auto;width:1px;min-width:1px;height:36px;background:var(--line);
+    border:0;border-radius:0;margin:0 3px;
+  }
   #symbols.hide{display:none}
 
   /* ---------- sheets ---------- */
@@ -484,6 +494,20 @@ const SYMBOLS = ['<', '>', '/', '"', '=', '{', '}', '(', ')', ';', ':', '#', '.'
 
 function buildSymbols () {
   const host = document.getElementById('symbols')
+
+  for (const a of ACTIONS) {
+    const d = document.createElement('div')
+    d.className = 'act'
+    d.textContent = a.label
+    d.addEventListener('mousedown', e => e.preventDefault())
+    d.addEventListener('touchstart', e => e.preventDefault(), { passive: false })
+    d.addEventListener('click', a.fn)
+    host.appendChild(d)
+  }
+  const sep = document.createElement('div')
+  sep.className = 'sep'
+  host.appendChild(sep)
+
   for (const s of SYMBOLS) {
     const d = document.createElement('div')
     d.textContent = s
@@ -497,6 +521,88 @@ function buildSymbols () {
     host.appendChild(d)
   }
 }
+
+
+// ---------------------------------------------------------------------------
+// Clipboard and edit actions
+//
+// Long-pressing inside a code editor on a phone is unreliable, so these give
+// copy/cut/paste/undo an actual button. Paste is the awkward one: iOS and
+// Android both restrict reading the clipboard, so there are three fallbacks.
+// ---------------------------------------------------------------------------
+
+async function writeClipboard (text) {
+  if (bridge && bridge.writeClipboard) {
+    bridge.writeClipboard(text)
+    return true
+  }
+  try {
+    await navigator.clipboard.writeText(text)
+    return true
+  } catch (e) { /* fall through */ }
+  try {
+    const ta = document.createElement('textarea')
+    ta.value = text
+    ta.style.position = 'fixed'
+    ta.style.opacity = '0'
+    document.body.appendChild(ta)
+    ta.select()
+    const ok = document.execCommand('copy')
+    document.body.removeChild(ta)
+    return ok
+  } catch (e) {
+    return false
+  }
+}
+
+async function readClipboard () {
+  if (bridge && bridge.readClipboard) {
+    const t = bridge.readClipboard()
+    if (t) return t
+  }
+  try {
+    const t = await navigator.clipboard.readText()
+    if (t) return t
+  } catch (e) { /* the browser refused - use the manual box */ }
+  // Last resort that always works: a plain input the user can long-press into.
+  return await askName('Long-press the box below and choose Paste', '')
+}
+
+function doSelectAll () {
+  const cm = editors[currentPane]
+  cm.execCommand('selectAll')
+  cm.focus()
+}
+
+async function doCopy (cut) {
+  const cm = editors[currentPane]
+  const sel = cm.getSelection()
+  const text = sel || cm.getValue()
+  const ok = await writeClipboard(text)
+  if (!ok) { toast('Could not reach the clipboard'); return }
+  if (cut && sel) { cm.replaceSelection(''); persist() }
+  toast(cut && sel ? 'Cut' : (sel ? 'Copied' : 'Copied the whole tab'))
+}
+
+async function doPaste () {
+  const text = await readClipboard()
+  if (text === null || text === undefined || text === '') return
+  const cm = editors[currentPane]
+  cm.replaceSelection(text)
+  cm.focus()
+  persist()
+  if (previewing) refresh()
+  toast('Pasted')
+}
+
+const ACTIONS = [
+  { label: 'All',   fn: doSelectAll },
+  { label: 'Copy',  fn: () => doCopy(false) },
+  { label: 'Cut',   fn: () => doCopy(true) },
+  { label: 'Paste', fn: doPaste },
+  { label: '↶', fn: () => editors[currentPane].undo() },
+  { label: '↷', fn: () => editors[currentPane].redo() },
+]
 
 // ---------------------------------------------------------------------------
 // Sheets, prompts, toasts
@@ -640,6 +746,9 @@ const ABOUT_HTML = [
 '<p>The row at the very top is your pages. Tap <b>+</b> to make another, tap a name to switch, tap the <b>x</b> to close one. Every page keeps its own HTML, CSS and JS.</p>',
 '<h2>The three tabs</h2>',
 '<p><b>HTML</b> is the page. <b>CSS</b> is how it looks. <b>JS</b> is what it does. The CSS and JS are folded into the HTML automatically whenever the page runs or is exported, so what you export is one file that works anywhere.</p>',
+'<h2>Copy and paste</h2>',
+'<p>The <b>All / Copy / Cut / Paste</b> buttons on the strip above the keyboard work when long-pressing does not - which on a phone is most of the time. Copy with nothing selected copies the whole tab.</p>',
+'<p>The two arrows next to them are undo and redo.</p>',
 '<h2>The symbol row</h2>',
 '<p>The strip above the keyboard types the characters the on-screen keyboard hides three taps deep. <code>Tab</code> inserts two spaces.</p>',
 '<h2>Photos, audio and video</h2>',
