@@ -140,6 +140,19 @@
     width:calc(100% - 36px);margin:0 18px;padding:12px 14px;font-size:16px;
     background:#232734;border:1px solid var(--line);border-radius:10px;color:var(--ink);
   }
+  .hint{margin:0 18px 10px;font-size:13px;color:var(--dim);line-height:1.5}
+  #pasteBox{
+    width:calc(100% - 36px);margin:0 18px;padding:12px 14px;font-size:15px;
+    background:#232734;border:1px solid var(--line);border-radius:10px;
+    color:var(--ink);font-family:Consolas,ui-monospace,monospace;
+    resize:none;line-height:1.5;
+  }
+  #pasteRow{display:flex;gap:10px;padding:14px 18px 4px}
+  #pasteRow button{
+    flex:1;padding:12px;border-radius:10px;border:1px solid var(--line);
+    background:#252a36;color:var(--ink);font-size:15px;font-weight:600;
+  }
+  #pasteRow button.primary{background:var(--accent);color:#0e1016;border-color:var(--accent)}
   #promptRow{display:flex;gap:10px;padding:14px 18px 4px}
   #promptRow button{
     flex:1;padding:12px;border-radius:10px;border:1px solid var(--line);
@@ -215,6 +228,19 @@
   <div class="mi warn" data-act="delete"><span class="k">&#215;</span>Delete this page</div>
   <h3>Help</h3>
   <div class="mi" data-act="about"><span class="k">?</span>How it works</div>
+</div></div>
+
+<div class="scrim" id="pasteScrim"><div class="sheet" id="pasteSheet">
+  <div class="grab"></div>
+  <h3>Paste</h3>
+  <p class="hint">Tap inside the box, hold your finger down, choose <b>Paste</b>,
+  then tap Insert.</p>
+  <textarea id="pasteBox" rows="8" autocomplete="off" autocapitalize="off"
+            autocorrect="off" spellcheck="false"></textarea>
+  <div id="pasteRow">
+    <button id="pasteCancel">Cancel</button>
+    <button id="pasteOk" class="primary">Insert</button>
+  </div>
 </div></div>
 
 <div class="scrim" id="promptScrim"><div class="sheet" id="promptSheet">
@@ -555,17 +581,46 @@ async function writeClipboard (text) {
   }
 }
 
+/** iOS Safari's clipboard read is unreliable and silently stalls, so there we go
+    straight to the manual box instead of pretending. */
+const IS_IOS = /iP(hone|ad|od)/.test(navigator.userAgent) ||
+               (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+
+let pasteResolve = null
+
+function openPasteSheet () {
+  return new Promise((resolve) => {
+    pasteResolve = resolve
+    const box = document.getElementById('pasteBox')
+    box.value = ''
+    document.getElementById('pasteScrim').classList.add('on')
+    setTimeout(() => box.focus(), 80)
+  })
+}
+
+function closePasteSheet (value) {
+  document.getElementById('pasteScrim').classList.remove('on')
+  const r = pasteResolve
+  pasteResolve = null
+  if (r) r(value)
+}
+
 async function readClipboard () {
+  // Android: the app reads the real system clipboard for us.
   if (bridge && bridge.readClipboard) {
     const t = bridge.readClipboard()
     if (t) return t
+    return await openPasteSheet()
   }
-  try {
-    const t = await navigator.clipboard.readText()
-    if (t) return t
-  } catch (e) { /* the browser refused - use the manual box */ }
-  // Last resort that always works: a plain input the user can long-press into.
-  return await askName('Long-press the box below and choose Paste', '')
+  // Desktop browsers handle this properly; iOS does not.
+  if (!IS_IOS) {
+    try {
+      const t = await navigator.clipboard.readText()
+      if (t) return t
+    } catch (e) { /* fall through to the box */ }
+  }
+  // The box is a textarea, so line breaks in pasted code survive.
+  return await openPasteSheet()
 }
 
 function doSelectAll () {
@@ -723,6 +778,7 @@ window.onFileImported = function (name, content) {
 /** Called from Kotlin when the hardware Back button is pressed.
     Returns true if the web layer handled it. */
 window.onBackPressed = function () {
+  if (document.getElementById('pasteScrim').classList.contains('on')) { closePasteSheet(null); return true }
   if (document.getElementById('promptScrim').classList.contains('on')) { closePrompt(null); return true }
   if (document.getElementById('menuScrim').classList.contains('on')) { openMenu(false); return true }
   if (document.getElementById('libScrim').classList.contains('on')) { openLibrary(false); return true }
@@ -1088,6 +1144,13 @@ document.getElementById('menuScrim').addEventListener('click', e => {
 })
 document.querySelectorAll('#menuSheet .mi').forEach(mi =>
   mi.addEventListener('click', () => runAction(mi.dataset.act)))
+document.getElementById('pasteCancel').addEventListener('click', () => closePasteSheet(null))
+document.getElementById('pasteOk').addEventListener('click',
+  () => closePasteSheet(document.getElementById('pasteBox').value))
+document.getElementById('pasteScrim').addEventListener('click', e => {
+  if (e.target.id === 'pasteScrim') closePasteSheet(null)
+})
+
 document.getElementById('promptCancel').addEventListener('click', () => closePrompt(null))
 document.getElementById('promptOk').addEventListener('click',
   () => closePrompt(document.getElementById('promptInput').value))
