@@ -1,0 +1,102 @@
+HTML STUDIO - iPhone edition (installable web app)
+
+Same editor as the Android app: page tabs, HTML/CSS/JS, live preview, symbol bar
+above the keyboard. Once installed it gets its own icon, opens fullscreen with no
+Safari bars, and works with no internet connection.
+
+Your iPhone will not run an app that Apple has not signed, and Apple's build tools
+only run on a Mac - so this is the route that actually works from where you are.
+It is not a compromise for a tool like this: it behaves like an app.
+
+
+WHAT IS IN THIS FOLDER
+----------------------
+index.html               the whole editor, one self-contained file
+manifest.webmanifest     tells iOS the name, icon and that it opens fullscreen
+sw.js                    service worker - makes it work offline
+icon-180.png             the home screen icon iOS uses
+icon-192/512*.png        icons for Android and desktop
+
+All six files must stay together, in the same folder.
+
+
+PUTTING IT ONLINE (once, about 5 minutes)
+-----------------------------------------
+Safari can only install a web app that is served over https, so the files need to
+live at a web address. GitHub Pages does this free and permanently. Do this part
+on your PC - it is easier with a keyboard.
+
+ 1. Go to github.com and make an account if you do not have one.
+ 2. Click + (top right) -> New repository.
+       Name:        html-studio
+       Visibility:  Public          <- must be public for free Pages
+    Click Create repository.
+ 3. On the new page click "uploading an existing file".
+ 4. Drag all six files from this folder into the browser. Not the folder itself -
+    the files. Then click Commit changes.
+ 5. Go to Settings (top of the repo) -> Pages (left sidebar).
+       Source: Deploy from a branch
+       Branch: main    and    / (root)
+    Click Save.
+ 6. Wait about a minute, then reload that page. It will show your address:
+
+       https://YOUR-USERNAME.github.io/html-studio/
+
+    Write it down.
+
+
+INSTALLING IT ON THE IPHONE
+---------------------------
+ 1. Open that address in SAFARI. It must be Safari - Chrome on iOS cannot install
+    web apps properly.
+ 2. Tap the Share button (the square with the arrow pointing up).
+ 3. Scroll down and tap "Add to Home Screen".
+ 4. Tap Add.
+
+You now have a HTML Studio icon on your home screen. Open it from there, not from
+Safari - launched from the icon it runs fullscreen with no browser bars.
+
+Open it once while you have internet. That first run stores everything on the
+phone; after that it works in aeroplane mode.
+
+The same address works on your Samsung too: open it in Chrome, then menu -> Add to
+Home screen / Install app.
+
+
+THINGS WORTH KNOWING
+--------------------
+* Everything saves itself as you type, on the device. Close it, come back, all
+  your pages are as you left them.
+
+* Use the three-dot menu -> Share to send a page to Files, Mail, or anywhere else.
+  Do that for work you would hate to lose. iOS is stricter than Android about
+  clearing storage for web apps that sit unused for a long time, and deleting the
+  home screen icon deletes the stored pages with it.
+
+* Anything you write is normal HTML, CSS and JavaScript. Nothing here is
+  proprietary - a page you export opens in any browser on any computer.
+
+* To update it later, replace index.html in the GitHub repo and bump the CACHE
+  name at the top of sw.js (v1 -> v2), otherwise the phone will keep serving the
+  cached old copy.
+
+WHAT IS NEW IN THIS VERSION
+---------------------------
+* Insert photos, audio and video into your pages. Menu -> Insert photo, audio or
+  video. It picks the file, stores it, and drops the right tag in for you. Photos
+  are shrunk automatically so they do not fill the phone.
+
+* Media library. Menu -> Media library lists everything you have added. Tap one to
+  insert it again anywhere, tap the x to delete it.
+
+* Your code stays readable. The page just shows  media/photo.jpg  instead of a
+  screenful of gibberish. When the page runs or is exported the real file is
+  folded back in, so an exported page still works anywhere on its own.
+
+* Open any file, not only .html. A .css file opens in the CSS tab, a .js file in
+  the JS tab, and .txt / .json / .md / anything else opens as plain text.
+
+* "Download from a link" exists in the menu but only works in the ANDROID app.
+  Your browser blocks a web page from fetching files off other websites, and
+  there is no way around that on iOS. Use Insert instead, after saving the file
+  to your phone normally.
